@@ -1,85 +1,81 @@
-# virtual-dev-env
+# 🚀 Virtual Development Environments / Sanal Geliştirme Ortamları
 
-Nix and Multipass based virtual development environments for macOS and Linux. This repository provides two different templates for setting up isolated development environments.
+🇺🇸 **EN:** This repository contains standardized, internationalized, and modular virtual development environment configurations using **Multipass**, **Nix**, and **Docker/K3s**. It is designed to provide a consistent coding environment across different tech stacks.
 
----
-
-## 🇹🇷 Proje Hakkında (Turkish)
-Bu depo, macOS ve Linux sistemlerinde izole geliştirme ortamları kurmak için iki farklı yapı sunar. **Nix** paket yöneticisi ile hafif (lightweight) terminal ortamları, **Multipass** ile tam izole Ubuntu tabanlı sanal makineler (VM) oluşturmanıza olanak tanır.
-
-## 🇺🇸 Project Overview (English)
-This repository provides two distinct structures for setting up isolated development environments on macOS and Linux. It leverages the **Nix** package manager for lightweight terminal environments and **Multipass** for fully isolated Ubuntu-based virtual machines (VM).
+🇹🇷 **TR:** Bu depo; **Multipass**, **Nix** ve **Docker/K3s** kullanarak standartlaştırılmış, uluslararasılaştırılmış ve modüler sanal geliştirme ortamı konfigürasyonlarını içerir. Farklı teknoloji yığınları arasında tutarlı bir kodlama ortamı sağlamak için tasarlanmıştır.
 
 ---
 
 ## 📂 Project Structure / Proje Yapısı
 
 ### 1. Simple Environment (`/simple`)
-**🇺🇸 EN:** Dynamic environment managed through manual configuration file editing.  
-**🇹🇷 TR:** Konfigürasyon dosyalarının manuel düzenlenmesiyle yönetilen dinamik yapı.
-- **Dynamic via Config:** Change versions by editing `Makefile`, `shell.nix` or `multipass-init.yaml`.
-- **Tools:** PHP 8.3, Node.js 18, Python 3.11, Git, Composer.
-- **Use Case:** When you prefer a "set and forget" fixed configuration.
+- **🇺🇸 EN:** Managed through manual config editing. Best for fixed, long-term environments.
+- **🇹🇷 TR:** Manuel konfigürasyon düzenlemesiyle yönetilir. Sabit ve uzun vadeli ortamlar için en iyisidir.
+- **Tools:** PHP, Node.js, Python, Git (Managed via `.virtual-dev-env/shell.nix`).
 
 ### 2. Complex Environment (`/complex`)
-**🇺🇸 EN:** Advanced environment where everything is managed through the Makefile without touching other files.  
-**🇹🇷 TR:** Diğer dosyalara dokunmadan her şeyin Makefile üzerinden yönetildiği gelişmiş yapı.
-- **Dynamic via Overrides:** Change versions and services directly from the command line (e.g., `make n-shell PHP_VER=php83`).
-- **Persistence:** Command-line overrides are **non-persistent**. To save your settings permanently, update the variables inside the `Makefile`.
-- **UI:** Color-coded professional terminal interface with detailed resource reporting.
+- **🇺🇸 EN:** Advanced orchestrator using CLI overrides. Change anything on-the-fly.
+- **🇹🇷 TR:** CLI parametreleri ile yönetilen gelişmiş orkestratör. Her şeyi anlık olarak değiştirin.
+- **Tools:** Dynamic PHP/Node versions, optional Databases (Redis, Postgres, MariaDB, SQLite).
+
+### 3. Docker Environment (`/docker`)
+- **🇺🇸 EN:** Container-based workflow with Docker Compose and local Kubernetes (K3s).
+- **🇹🇷 TR:** Docker Compose ve yerel Kubernetes (K3s) destekli konteyner tabanlı çalışma akışı.
+- **Tools:** Modular runtimes, DB Profiles, and K3s cluster management via `k3d`.
 
 ---
 
 ## 🚀 Quick Start / Hızlı Başlangıç
 
 ### Prerequisites / Önkoşullar
-Ensure you have the following installed on your host machine:  
-Sisteminizde aşağıdaki araçların kurulu olduğundan emin olun:
-- **Multipass:** [Install Guide](https://multipass.run/install)
-- **Nix:** [Install Guide](https://nixos.org/download.html)
+- **Multipass / Nix:** For VM and lightweight shells.
+- **Docker / k3d:** For containerized and K8s environments.
 
 ### Usage / Kullanım
 
 #### Simple Setup:
 ```bash
 cd simple
-# Edit Makefile or shell.nix to change versions
 make n-shell          # Open Nix shell
 make setup-vm         # Create Multipass VM
 ```
 
-#### Complex Setup:
+#### Complex Setup (Dynamic):
 ```bash
 cd complex
-# Run with defaults or override on the fly (non-persistent):
 make n-shell PHP_VER=php83 DATABASES="postgres redis"
 make setup-vm VM_MEM=4G PHP_VER=php83
+```
+
+#### Docker & K3s Setup:
+```bash
+cd docker
+make build PHP_VER=8.3 NODE_VER=20   # Build custom container
+make up DATABASES="redis mariadb"    # Start with specific DBs
+make k3s-up                          # Spin up local K3s cluster
 ```
 
 ---
 
 ## 🛠 Features / Özellikler
 
-| Feature / Özellik | Simple | Complex |
-| :--- | :---: | :---: |
-| **English Support** | ✅ | ✅ |
-| **Nix Shell / VM** | ✅ | ✅ |
-| **Variable Overrides** | ❌ (Edit config) | ✅ (Command Line) |
-| **Runtime Selection** | ✅ (Via Files) | ✅ (Dynamic/CLI) |
-| **Database Selection** | ✅ (Manual) | ✅ (Dynamic/CLI) |
-| **Persistence** | Permanent (Files) | Non-persistent (CLI) |
-| **Deployment Tools** | ❌ | ✅ |
-| **Color UI / Renkli Arayüz** | ✅ | ✅ |
+| Feature / Özellik | Simple | Complex | Docker/K3s |
+| :--- | :---: | :---: | :---: |
+| **Nix Shell / VM** | ✅ | ✅ | ❌ (Docker) |
+| **Variable Overrides** | ❌ (Manual) | ✅ (CLI) | ✅ (CLI) |
+| **Database Profiles** | ❌ | ✅ | ✅ |
+| **Kubernetes (K3s)** | ❌ | ❌ | ✅ |
+| **Color UI / Help** | ✅ | ✅ | ✅ |
+| **Architecture** | Config-First | Orchestrator-First | Container-First |
 
 ---
 
 ## 📝 TODO / Roadmap
-- [ ] **Docker Integration:** Add a `docker-compose` based environment for container enthusiasts.
-- [ ] **Kubernetes/K3s:** A new folder for local K8s development setups.
+- [x] **Docker Integration:** Container-based modular setup.
+- [x] **Kubernetes/K3s:** Local K8s development via k3d.
 - [ ] **Custom Cloud-Init Templates:** More specialized OS images (Debian, Arch).
-- [ ] **Automated Testing:** CI/CD integration to validate environments on every commit.
-- [ ] **GUI Dashboard:** A simple electron or web-based dashboard to manage these environments visually.
-- [ ] **Moduler Structure:** Split code base into smaller, more manageable modules.
+- [ ] **Automated Testing:** CI/CD integration for environment validation.
+- [ ] **GUI Dashboard:** Visual management interface for all environments.
 
 ---
 

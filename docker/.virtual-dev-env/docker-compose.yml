@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .virtual-dev-env/Dockerfile
+      args:
+        PHP_VERSION: ${PHP_VER:-}
+        NODE_VERSION: ${NODE_VER:-}
+    container_name: ${CONTAINER_NAME:-dev-app}
+    volumes:
+      - ..:/app
+    tty: true
+    stdin_open: true
+
+  # --- OPTIONAL DATABASE SERVICES (Managed via Profiles) ---
+
+  mariadb:
+    image: mariadb:10.11
+    profiles: ["mariadb"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dev_db
+    ports:
+      - "3306:3306"
+
+  postgres:
+    image: postgres:15-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: dev_db
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"

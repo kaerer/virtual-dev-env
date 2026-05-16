@@ -1,0 +1,8 @@
+.git
+.virtual-dev-env
+node_modules
+vendor
+.nix-shell
+.db_data*
+*.zip
+*.tar.gz
