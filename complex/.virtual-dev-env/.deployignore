@@ -21,3 +21,5 @@ multipass-init.yaml
 # Heavy dependencies (Uncomment if you want to install them fresh on production)
 # node_modules/
 # vendor/
+
+.virtual-dev-env

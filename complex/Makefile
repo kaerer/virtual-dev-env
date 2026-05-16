@@ -15,10 +15,10 @@ VM_MEM           ?= 2G
 VM_DISK          ?= 15G
 VM_LOCAL_DIR     ?= .
 VM_REMOTE_DIR    ?= /home/ubuntu/project-workspace
-CLOUD_INIT       ?= multipass-init.yaml
+CLOUD_INIT       ?= .virtual-dev-env/multipass-init.yaml
 
 # Nix Configuration File
-NIX_FILE         ?= shell.nix
+NIX_FILE         ?= .virtual-dev-env/shell.nix
 
 # Default Runtime Versions (Passed Dynamically to Nix and VM)
 # Update here to change the version! (e.g., php82, php83, php84)
@@ -33,6 +33,7 @@ DATABASES        ?= redis sqlite
 
 # Packaging Target File
 DEPLOYMENT_FILE  ?= deployment.zip
+DEPLOY_IGNORE    ?= .virtual-dev-env/.deployignore
 
 # --------------------
 
@@ -81,7 +82,7 @@ help:
 	@echo "   make vm-purge         : Permanently deletes the VM and its data."
 	@echo ""
 	@echo "$(C_BLUE)4. DEPLOYMENT & UTILS$(C_RESET)"
-	@echo "   make create-deployment: Generates a zip package using .deployignore."
+	@echo "   make create-deployment: Generates a zip package using $(DEPLOY_IGNORE)."
 	@echo ""
 	@echo "$(C_BLUE)5. CURRENT CONFIGURATION (Defaults)$(C_RESET)"
 	@echo "   VM Name    : $(VM_NAME)"
@@ -192,11 +193,11 @@ vm-purge:
 create-deployment:
 	@echo "$(C_BLUE)--> Preparing deployment package ($(DEPLOYMENT_FILE))...$(C_RESET)"
 	@rm -f $(DEPLOYMENT_FILE)
-	@if [ ! -f .deployignore ]; then \
-		echo "$(C_YELLOW)⚠️  .deployignore file not found! Compressing all project files...$(C_RESET)"; \
+	@if [ ! -f $(DEPLOY_IGNORE) ]; then \
+		echo "$(C_YELLOW)⚠️  $(DEPLOY_IGNORE) not found! Compressing all files...$(C_RESET)"; \
 		zip -r $(DEPLOYMENT_FILE) . ; \
 	else \
-		echo "$(C_GREEN)✔️  .deployignore is active. Filtering out unwanted files...$(C_RESET)"; \
-		zip -r $(DEPLOYMENT_FILE) . -x@.deployignore ; \
+		echo "$(C_GREEN)✔️  $(DEPLOY_IGNORE) is active. Filtering out unwanted files...$(C_RESET)"; \
+		zip -r $(DEPLOYMENT_FILE) . -x@$(DEPLOY_IGNORE) ; \
 	fi
 	@echo "$(C_SUCCESS)--> Deployment package successfully created: $(DEPLOYMENT_FILE) $(C_RESET)"
