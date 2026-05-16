@@ -1,0 +1,23 @@
+# .deployignore
+# Temporary and Cache files
+temp/
+cache/
+.tmp/
+.sass-cache/
+
+# Development / Nix / VM configs
+.git/
+.github/
+Makefile
+shell.nix
+multipass-init.yaml
+.deployignore
+*.zip
+
+# Environment & Logs
+.env
+*.log
+
+# Heavy dependencies (Uncomment if you want to install them fresh on production)
+# node_modules/
+# vendor/

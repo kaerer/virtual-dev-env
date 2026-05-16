@@ -1,0 +1,105 @@
+#cloud-config
+# Multipass Sanal Makine Otomatik Başlangıç Yapılandırması (Cloud-Init)
+users:
+    - default
+    - name: developer
+      sudo: ALL=(ALL) NOPASSWD:ALL
+      shell: /bin/bash
+
+package_update: true
+package_upgrade: false
+
+# Ortak ve stabil Linux temel paketleri
+packages:
+  - build-essential
+  - software-properties-common
+  - git
+  - unzip
+#  - curl
+#  - htop
+#  - wget
+#  - sqlite3
+  - redis-server
+#  - postgresql
+#  - postgresql-contrib
+
+runcmd:
+  # 1. Proje çalışma alanının dizin yapısını ve izinlerini kurgula
+  - mkdir -p /home/ubuntu/project-workspace
+  - chown -R ubuntu:ubuntu /home/ubuntu/project-workspace
+  
+  # 2. DİNAMİK PHP SÜRÜM TESPİTİ VE UZANTI KURULUMU
+  - |
+    # Makefile'dan gelen parametreyi oku (Örn: php82 veya php83). Gelmezse varsayılan php82 yap.
+    RAW_VER="%%php_version%%"
+    # Eğer boş bırakıldıysa veya template render edilmediyse kurulum yapma
+    if [ -n "$RAW_VER" ] && [ "$RAW_VER" != "" ] && [ "$RAW_VER" != "%""%php_version%""%" ]; then
+    # Sürüm formatını temizle ve dönüştür (php82 -> 8.2)
+    PHP_DOT_VER=$(echo "$RAW_VER" | sed 's/php//' | sed 's/\([0-9]\)\([0-9]\)/\1.\2/')
+    echo "Seçilen Dinamik PHP Sürümü Kuruluyor: $PHP_DOT_VER"
+    
+    # Güncel PHP Reposunu (PPA) Ubuntu'ya ekle
+    add-apt-repository -y ppa:ondrej/php
+    apt-get update -y
+    
+      # PHP uzantı isimleri yalın bir dizi (array) yapısında tanımlanıyor
+      MODULES=(
+        "cli"
+        "fpm"
+        "common"
+        "bcmath"
+        "intl"
+        "zip"
+        "mbstring"
+        "xml"
+        "curl"
+        "opcache"
+        "redis"
+        "sqlite3"
+        "pgsql"
+        "mysql"
+      )
+
+      # Yalın modül isimlerini dinamik olarak phpX.X- ön ekiyle tam paket isimlerine dönüştürüyoruz
+      PHP_EXTENSIONS=()
+      for mod in "${MODULES[@]}"; do
+        PHP_EXTENSIONS+=("php${PHP_DOT_VER}-${mod}")
+      done
+      
+      # Dinamik olarak oluşturulan tam paket listesiyle kurulumu gerçekleştir
+      apt-get install -y "${PHP_EXTENSIONS[@]}"
+
+      # 3. Composer Kurulumu (VM içindeki global bağımlılık yönetimi için - Sadece PHP aktifse kurulur)
+      curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    else
+      echo "PHP Sürümü boş bırakıldı veya devre dışı. PHP ve Composer kurulumu atlanıyor."
+    fi
+
+  # 3.5 DİNAMİK NODEJS SÜRÜMÜ KURULUMU
+  - |
+    NODE_RAW_VER="%%node_version%%"
+    if [ -n "$NODE_RAW_VER" ] && [ "$NODE_RAW_VER" != "" ] && [ "$NODE_RAW_VER" != "%""%node_version%""%" ]; then
+      # Sürüm formatını temizle ve dönüştür (nodejs_18 -> 18)
+      NODE_DOT_VER=$(echo "$NODE_RAW_VER" | sed 's/nodejs_//')
+      echo "Seçilen Dinamik Node.js Sürümü Kuruluyor: v$NODE_DOT_VER"
+      
+      # NodeSource reposunu ekle ve kur
+      curl -fsSL https://deb.nodesource.com/setup_${NODE_DOT_VER}.x | bash -
+      apt-get install -y nodejs
+    else
+      echo "Node Sürümü boş bırakıldı veya devre dışı. Node.js kurulumu atlanıyor."
+    fi
+
+  # 4. NETWORK AYARLARI 1: Redis'in dışarıya (Host Localine) açılması
+  - |
+    if systemctl list-units --type=service | grep -q redis-server; then
+      sed -i 's/bind 127.0.0.1 ::1/bind 0.0.0.0/g' /etc/redis/redis.conf
+      systemctl restart redis-server
+    fi
+
+  # 5. NETWORK AYARLARI 2: PostgreSQL dış bağlantı ve kimlik doğrulama ayarları
+  - sh -c 'if ls /etc/postgresql/*/main/postgresql.conf >/dev/null 2>&1; then echo "listen_addresses = '''*'''" >> $(ls /etc/postgresql/*/main/postgresql.conf | head -n 1); fi'
+  - sh -c 'if ls /etc/postgresql/*/main/pg_hba.conf >/dev/null 2>&1; then echo "host all all 0.0.0.0/0 md5" >> $(ls /etc/postgresql/*/main/pg_hba.conf | head -n 1); fi'
+  - sh -c 'if systemctl list-units --type=service | grep -q postgresql; then systemctl restart postgresql; fi'
+
+final_message: "--> [BAŞARILI] VM Altyapısı, Dinamik PHP Sürümü, Uzantıları ve Ağ İzinleri Eksiksiz Yapılandırıldı."
