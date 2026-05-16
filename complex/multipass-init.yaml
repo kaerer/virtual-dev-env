@@ -1,5 +1,5 @@
 #cloud-config
-# Multipass Sanal Makine Otomatik Başlangıç Yapılandırması (Cloud-Init)
+# Multipass Virtual Machine Automatic Startup Configuration (Cloud-Init)
 users:
     - default
     - name: developer
@@ -9,7 +9,7 @@ users:
 package_update: true
 package_upgrade: false
 
-# Ortak ve stabil Linux temel paketleri
+# Common and stable Linux base packages
 packages:
   - build-essential
   - software-properties-common
@@ -24,25 +24,25 @@ packages:
 #  - postgresql-contrib
 
 runcmd:
-  # 1. Proje çalışma alanının dizin yapısını ve izinlerini kurgula
+  # 1. Setup project workspace directory structure and permissions
   - mkdir -p /home/ubuntu/project-workspace
   - chown -R ubuntu:ubuntu /home/ubuntu/project-workspace
   
-  # 2. DİNAMİK PHP SÜRÜM TESPİTİ VE UZANTI KURULUMU
+  # 2. DYNAMIC PHP VERSION DETECTION AND EXTENSION INSTALLATION
   - |
-    # Makefile'dan gelen parametreyi oku (Örn: php82 veya php83). Gelmezse varsayılan php82 yap.
+    # Read the parameter from Makefile (e.g., php82 or php83)
     RAW_VER="%%php_version%%"
-    # Eğer boş bırakıldıysa veya template render edilmediyse kurulum yapma
+    # If left empty or template not rendered, do not install
     if [ -n "$RAW_VER" ] && [ "$RAW_VER" != "" ] && [ "$RAW_VER" != "%""%php_version%""%" ]; then
-    # Sürüm formatını temizle ve dönüştür (php82 -> 8.2)
-    PHP_DOT_VER=$(echo "$RAW_VER" | sed 's/php//' | sed 's/\([0-9]\)\([0-9]\)/\1.\2/')
-    echo "Seçilen Dinamik PHP Sürümü Kuruluyor: $PHP_DOT_VER"
-    
-    # Güncel PHP Reposunu (PPA) Ubuntu'ya ekle
-    add-apt-repository -y ppa:ondrej/php
-    apt-get update -y
-    
-      # PHP uzantı isimleri yalın bir dizi (array) yapısında tanımlanıyor
+      # Clean and convert version format (php82 -> 8.2)
+      PHP_DOT_VER=$(echo "$RAW_VER" | sed 's/php//' | sed 's/\([0-9]\)\([0-9]\)/\1.\2/')
+      echo "Installing Selected Dynamic PHP Version: $PHP_DOT_VER"
+      
+      # Add current PHP Repo (PPA) to Ubuntu
+      add-apt-repository -y ppa:ondrej/php
+      apt-get update -y
+      
+      # PHP extension names defined in a plain array
       MODULES=(
         "cli"
         "fpm"
@@ -60,46 +60,66 @@ runcmd:
         "mysql"
       )
 
-      # Yalın modül isimlerini dinamik olarak phpX.X- ön ekiyle tam paket isimlerine dönüştürüyoruz
+      # Dynamically convert plain module names to full package names with phpX.X- prefix
       PHP_EXTENSIONS=()
       for mod in "${MODULES[@]}"; do
         PHP_EXTENSIONS+=("php${PHP_DOT_VER}-${mod}")
       done
       
-      # Dinamik olarak oluşturulan tam paket listesiyle kurulumu gerçekleştir
+      # Execute installation with dynamically generated full package list
       apt-get install -y "${PHP_EXTENSIONS[@]}"
 
-      # 3. Composer Kurulumu (VM içindeki global bağımlılık yönetimi için - Sadece PHP aktifse kurulur)
+      # 3. Composer Installation (only if PHP is active)
       curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
     else
-      echo "PHP Sürümü boş bırakıldı veya devre dışı. PHP ve Composer kurulumu atlanıyor."
+      echo "PHP Version is empty or disabled. Skipping PHP and Composer installation."
     fi
 
-  # 3.5 DİNAMİK NODEJS SÜRÜMÜ KURULUMU
+  # 3.5 DYNAMIC NODEJS VERSION INSTALLATION
   - |
     NODE_RAW_VER="%%node_version%%"
     if [ -n "$NODE_RAW_VER" ] && [ "$NODE_RAW_VER" != "" ] && [ "$NODE_RAW_VER" != "%""%node_version%""%" ]; then
-      # Sürüm formatını temizle ve dönüştür (nodejs_18 -> 18)
+      # Clean and convert version format (nodejs_18 -> 18)
       NODE_DOT_VER=$(echo "$NODE_RAW_VER" | sed 's/nodejs_//')
-      echo "Seçilen Dinamik Node.js Sürümü Kuruluyor: v$NODE_DOT_VER"
+      echo "Installing Selected Dynamic Node.js Version: v$NODE_DOT_VER"
       
-      # NodeSource reposunu ekle ve kur
+      # Add NodeSource repo and install
       curl -fsSL https://deb.nodesource.com/setup_${NODE_DOT_VER}.x | bash -
       apt-get install -y nodejs
     else
-      echo "Node Sürümü boş bırakıldı veya devre dışı. Node.js kurulumu atlanıyor."
+      echo "Node Version is empty or disabled. Skipping Node.js installation."
     fi
 
-  # 4. NETWORK AYARLARI 1: Redis'in dışarıya (Host Localine) açılması
+  # 4. DYNAMIC DATABASE INSTALLATION & NETWORK CONFIGURATION
   - |
-    if systemctl list-units --type=service | grep -q redis-server; then
-      sed -i 's/bind 127.0.0.1 ::1/bind 0.0.0.0/g' /etc/redis/redis.conf
-      systemctl restart redis-server
+    DATABASES="%%enabled_databases%%"
+    if [ -n "$DATABASES" ] && [ "$DATABASES" != "" ] && [ "$DATABASES" != "%""%enabled_databases%""%" ]; then
+      echo "Installing Databases: $DATABASES"
+      for db in $DATABASES; do
+        if [ "$db" = "redis" ]; then
+          echo "Setting up Redis..."
+          apt-get install -y redis-server
+          sed -i 's/bind 127.0.0.1 ::1/bind 0.0.0.0/g' /etc/redis/redis.conf
+          systemctl restart redis-server
+        elif [ "$db" = "postgres" ]; then
+          echo "Setting up PostgreSQL..."
+          apt-get install -y postgresql postgresql-contrib
+          # Allow external connections
+          CONF_FILE=$(ls /etc/postgresql/*/main/postgresql.conf | head -n 1)
+          HBA_FILE=$(ls /etc/postgresql/*/main/pg_hba.conf | head -n 1)
+          if [ -n "$CONF_FILE" ]; then echo "listen_addresses = '*'" >> "$CONF_FILE"; fi
+          if [ -n "$HBA_FILE" ]; then echo "host all all 0.0.0.0/0 md5" >> "$HBA_FILE"; fi
+          systemctl restart postgresql
+        elif [ "$db" = "mariadb" ]; then
+          echo "Setting up MariaDB..."
+          apt-get install -y mariadb-server
+        elif [ "$db" = "sqlite" ]; then
+          echo "Setting up SQLite..."
+          apt-get install -y sqlite3
+        fi
+      done
+    else
+      echo "No databases specified. Skipping database installation."
     fi
 
-  # 5. NETWORK AYARLARI 2: PostgreSQL dış bağlantı ve kimlik doğrulama ayarları
-  - sh -c 'if ls /etc/postgresql/*/main/postgresql.conf >/dev/null 2>&1; then echo "listen_addresses = '''*'''" >> $(ls /etc/postgresql/*/main/postgresql.conf | head -n 1); fi'
-  - sh -c 'if ls /etc/postgresql/*/main/pg_hba.conf >/dev/null 2>&1; then echo "host all all 0.0.0.0/0 md5" >> $(ls /etc/postgresql/*/main/pg_hba.conf | head -n 1); fi'
-  - sh -c 'if systemctl list-units --type=service | grep -q postgresql; then systemctl restart postgresql; fi'
-
-final_message: "--> [BAŞARILI] VM Altyapısı, Dinamik PHP Sürümü, Uzantıları ve Ağ İzinleri Eksiksiz Yapılandırıldı."
+final_message: "--> [SUCCESS] VM Infrastructure, Dynamic PHP Version, Extensions, and Network Permissions Fully Configured."

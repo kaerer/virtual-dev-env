@@ -1,45 +1,45 @@
 # ==============================================================================
 # UNIFIED DEVELOPMENT ENVIRONMENT ORCHESTRATOR (Makefile)
-# macOS (Homebrew) & Linux (Apt/Yum Multi-Distro Fallback) Uyumlu
+# macOS (Homebrew) & Linux (Apt/Yum Multi-Distro Fallback) Compatible
 # ==============================================================================
 
 # ==============================================================================
-# 1. YAPILANDIRMA VE DEĞİŞKENLER (CONFIG & VARIABLES)
+# 1. CONFIGURATION & VARIABLES
 # ==============================================================================
 OS               := $(shell uname -s)
 
-# Sanal Makine (Multipass) Konfigürasyonu
-VM_NAME          := dev-box
-VM_CPUS          := 2
-VM_MEM           := 2G
-VM_DISK          := 15G
-VM_LOCAL_DIR     := .
-VM_REMOTE_DIR    := /home/ubuntu/project-workspace
-CLOUD_INIT       := multipass-init.yaml
+# Virtual Machine (Multipass) Configuration
+VM_NAME          ?= dev-box
+VM_CPUS          ?= 2
+VM_MEM           ?= 2G
+VM_DISK          ?= 15G
+VM_LOCAL_DIR     ?= .
+VM_REMOTE_DIR    ?= /home/ubuntu/project-workspace
+CLOUD_INIT       ?= multipass-init.yaml
 
-# Nix Yapılandırma Dosyası
-NIX_FILE         := shell.nix
+# Nix Configuration File
+NIX_FILE         ?= shell.nix
 
-# Varsayılan Çalışma Zamanı Sürümleri (Nix ve VM Tarafına Dinamik Geçirilir)
-# Sürümü değiştirmek için burayı güncellemeniz yeterlidir! (Örn: php82, php83, php84)
-# Devre dışı bırakmak için tamamen boş bırakabilirsiniz! (Örn: PHP_VER := )
-PHP_VER          := php82
-NODE_VER         := nodejs_18
+# Default Runtime Versions (Passed Dynamically to Nix and VM)
+# Update here to change the version! (e.g., php82, php83, php84)
+# Leave completely empty to disable! (e.g., PHP_VER := )
+PHP_VER          ?= php82
+NODE_VER         ?= nodejs_18
 
-# Aktif Edilecek Veritabanı Listesi (Boşluklarla ayrılmış dizi/array formatında)
-# İstediğiniz servisleri ekleyip çıkarabilirsiniz (Seçenekler: redis, postgres, mariadb, sqlite)
-#DATABASES        := redis postgres mariadb sqlite
-DATABASES        := redis sqlite
+# Active Database List (Space-separated array format)
+# Add or remove services as needed (Options: redis, postgres, mariadb, sqlite)
+#DATABASES        ?= redis postgres mariadb sqlite
+DATABASES        ?= redis sqlite
 
-# Paketleme Hedef Dosyası
-DEPLOYMENT_FILE := deployment.zip
+# Packaging Target File
+DEPLOYMENT_FILE  ?= deployment.zip
 
 # --------------------
 
-# Boşlukla ayrılmış listeyi Nix array formatına dönüştürür: [ "redis" "postgres" ... ]
+# Converts space-separated list to Nix array format: [ "redis" "postgres" ... ]
 NIX_DB_ARRAY     := [ $(foreach db,$(DATABASES),"$(db)") ]
 
-# Terminal Renklendirme Kodları (Professional UX)
+# Terminal Color Codes (Professional UX)
 C_RESET          := \033[0m
 C_BLUE           := \033[1;34m
 C_GREEN          := \033[1;32m
@@ -49,113 +49,112 @@ C_CYAN           := \033[1;36m
 C_SUCCESS        := \033[1;32m
 
 # ==============================================================================
-# 2. HEDEF TANIMLAMALARI (.PHONY)
+# 2. TARGET DEFINITIONS (.PHONY)
 # ==============================================================================
 .PHONY: help install-deps install-nix install-multipass info n-shell nix-clean nix-update setup-vm vm-shell vm-start vm-stop vm-restart vm-info vm-mount vm-unmount vm-purge create-deployment
 
 # ==============================================================================
-# 3. YARDIM VE PANEL ARAYÜZÜ
+# 3. HELP AND PANEL INTERFACE
 # ==============================================================================
 help:
 	@echo "$(C_CYAN)========================================================================$(C_RESET)"
-	@echo "$(C_CYAN)                 GELİŞTİRME ORTAMI SİSTEM KONTROL PANELİ                $(C_RESET)"
+	@echo "$(C_CYAN)                 DEVELOPMENT ENVIRONMENT SYSTEM CONTROL PANEL               $(C_RESET)"
 	@echo "$(C_CYAN)========================================================================$(C_RESET)"
-	@echo "$(C_BLUE)1. ANA MAKİNE SİSTEM YÖNETİMİ & DENETİM$(C_RESET)"
-	@echo "   make install-deps     : Gerekli tüm araçları (Nix, Multipass vb.) otomatik kurar."
-	@echo "   make install-nix      : Nix paket yöneticisini kurar"
-	@echo "   make install-multipass: Multipass (VM aracı) kurar"
-	@echo "   make info             : Sistemdeki servislerin durumunu ve IP'leri raporlar."
+	@echo "$(C_BLUE)1. HOST MACHINE SYSTEM MANAGEMENT$(C_RESET)"
+	@echo "   make install-deps     : Automatically installs all required tools."
+	@echo "   make install-nix      : Installs the Nix package manager."
+	@echo "   make install-multipass: Installs Multipass (VM tool)."
+	@echo "   make info             : Reports status of system services and IPs."
 	@echo ""
-	@echo "$(C_BLUE)2. NIX-SHELL (TEK VE BİRLEŞİK ÇALIŞMA ORTAMI)$(C_RESET)"
-	@echo "   make n-shell          : Tüm dilleri içeren ana shell'i açar."
-	@echo "                           * Veritabanı toggleri Makefile değişkenlerinden yönetilir."
-	@echo "   make nix-clean        : Eski kütüphane sürümlerini temizler, disk alanı açar."
-	@echo "   make nix-update       : Nix paket indeks kanallarını tamamen günceller."
+	@echo "$(C_BLUE)2. NIX-SHELL (LOCAL WORKSPACE)$(C_RESET)"
+	@echo "   make n-shell          : Opens unified shell with PHP, Node, etc."
+	@echo "   make nix-clean        : Frees disk space by removing old Nix versions."
+	@echo "   make nix-update       : Updates Nix package channels."
 	@echo ""
-	@echo "$(C_BLUE)3. MULTIPASS (TAM İZOLE SANAL MAKİNE ALTYAPISI)$(C_RESET)"
-	@echo "   make setup-vm         : Cloud-init ve dinamik PHP sürümüyle Ubuntu VM ayağa kaldırır."
-	@echo "   make vm-shell         : VM içine güvenli kabuk (SSH/Shell) bağlantısı açar."
-	@echo "   make vm-start         : Durdurulmuş olan sanal makineyi başlatır."
-	@echo "   make vm-stop          : Sanal makineyi güvenli modda kapatır."
-	@echo "   make vm-restart       : Sanal makineye hızlı yeniden başlatma uygular."
-	@echo "   make vm-info          : VM'in kaynak tüketimini (CPU, RAM, Disk, IP) raporlar."
-	@echo "   make vm-mount         : Yerel dizini sanal makine içine canlı olarak bağlar."
-	@echo "   make vm-unmount       : Klasör senkronizasyon bağını güvenle keser."
-	@echo "   make vm-purge         : Sanal makineyi ve tüm disk imajını kökten yok eder."
+	@echo "$(C_BLUE)3. MULTIPASS (VIRTUAL MACHINE)$(C_RESET)"
+	@echo "   make setup-vm         : Deploys VM with dynamic runtimes and DBs."
+	@echo "   make vm-shell         : Opens secure shell (SSH) into the VM."
+	@echo "   make vm-start/stop    : Starts or safely stops the virtual machine."
+	@echo "   make vm-restart       : Performs a fast restart of the VM."
+	@echo "   make vm-info          : Reports VM resource usage and IP."
+	@echo "   make vm-mount/unmount : Manages folder sync between Host and VM."
+	@echo "   make vm-purge         : Permanently deletes the VM and its data."
 	@echo ""
-	@echo "$(C_BLUE)4. NIX-SHELL DINAMIK KULLANIM SENARYOLARI$(C_RESET)"
-	@echo "   $(C_GREEN)make n-shell$(C_RESET)"
-	@echo "     Örnek 1  : make n-shell DATABASES=\"redis sqlite\""
-	@echo "     Örnek 2  : make n-shell PHP_VER=php83 DATABASES=\"postgres\""
-	@echo "     Örnek 3  : make n-shell PHP_VER=\"\" NODE_VER=\"\" DATABASES=\"sqlite\""
+	@echo "$(C_BLUE)4. DEPLOYMENT & UTILS$(C_RESET)"
+	@echo "   make create-deployment: Generates a zip package using .deployignore."
 	@echo ""
-	@echo "$(C_BLUE)5. DAĞITIM VE PAKETLEME (DEPLOYMENT)$(C_RESET)"
-	@echo "   make create-deployment : .deployignore listesini ayıklayarak zip paketi üretir."
+	@echo "$(C_BLUE)5. CURRENT CONFIGURATION (Defaults)$(C_RESET)"
+	@echo "   VM Name    : $(VM_NAME)"
+	@echo "   Resources  : $(VM_CPUS) CPUs, $(VM_MEM) RAM, $(VM_DISK) Disk"
+	@echo "   PHP Ver    : $(PHP_VER) | Node Ver: $(NODE_VER)"
+	@echo "   Databases  : $(DATABASES)"
 	@echo "$(C_CYAN)========================================================================$(C_RESET)"
 
 # ==============================================================================
-# 4. KURULUM VE SİSTEM DENETİMİ
+# 4. INSTALLATION AND SYSTEM AUDIT
 # ==============================================================================
 install-deps: install-nix install-multipass
 
 install-nix:
-	@echo "Nix kuruluyor..."
+	@echo "Installing Nix..."
 	curl -L https://nixos.org/nix/install | sh
 
 install-multipass:
 ifeq ($(OS),Darwin)
-	@echo "macOS algılandı, Multipass kuruluyor (Brew)..."
+	@echo "macOS detected, installing Multipass (Brew)..."
 	@which brew > /dev/null || /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 	brew install multipass
 else ifeq ($(OS),Linux)
-	@echo "Linux algılandı, Multipass kuruluyor..."
+	@echo "Linux detected, installing Multipass..."
 	@if [ -f /etc/debian_version ]; then \
 		sudo apt-get update && sudo apt-get install -y multipass; \
 	elif [ -f /etc/redhat-release ]; then \
 		sudo yum install -y multipass; \
 	else \
-		echo "Desteklenmeyen Linux dağıtımı. Lütfen multipass paketini manuel kurun."; \
+		echo "Unsupported Linux distribution. Please install the multipass package manually."; \
 	fi
 endif
 
 info:
-	@echo "$(C_CYAN)=== SİSTEM DURUM RAPORU ===$(C_RESET)"
-	@echo "Host İşletim Sistemi: $(C_SUCCESS)$(OS)$(C_RESET)"
-	@echo "--- Nix İstatistikleri ---"
-	@which nix-env > /dev/null && nix-env --version || echo "$(C_YELLOW)Nix henüz kurulu veya aktif değil.$(C_RESET)"
-	@echo "--- Multipass Sanal Ortam Listesi ---"
-	@which multipass > /dev/null && multipass list || echo "$(C_YELLOW)Multipass kurulu değil.$(C_RESET)"
+	@echo "$(C_CYAN)=== SYSTEM STATUS REPORT ===$(C_RESET)"
+	@echo "Host Operating System: $(C_SUCCESS)$(OS)$(C_RESET)"
+	@echo "--- Nix Statistics ---"
+	@which nix-env > /dev/null && nix-env --version || echo "$(C_YELLOW)Nix is not installed or active yet.$(C_RESET)"
+	@echo "--- Multipass Virtual Environment List ---"
+	@which multipass > /dev/null && multipass list || echo "$(C_YELLOW)Multipass is not installed.$(C_RESET)"
 
 # ==============================================================================
-# 5. UNIFIED NIX-SHELL YÖNETİMİ
+# 5. UNIFIED NIX-SHELL MANAGEMENT
 # ==============================================================================
 n-shell:
-	@echo "$(C_BLUE)--> Nix tümleşik çalışma ortamı yükleniyor (Veritabanı dizisi: '$(DATABASES)')...$(C_RESET)"
+	@echo "$(C_BLUE)--> Loading unified Nix workspace (Database array: '$(DATABASES)')...$(C_RESET)"
 	nix-shell $(NIX_FILE) \
 		--argstr phpVersion "$(PHP_VER)" \
 		--argstr nodeVersion "$(NODE_VER)" \
 		--arg enabledDatabases '$(NIX_DB_ARRAY)'
 
 nix-clean:
-	@echo "$(C_YELLOW)--> Nix çöp toplayıcısı çalıştırılıyor (Eski paket sürümleri temizleniyor)...$(C_RESET)"
+	@echo "$(C_YELLOW)--> Running Nix garbage collector (Cleaning old package versions)...$(C_RESET)"
 	nix-collect-garbage -d
-	@echo "$(C_YELLOW)--> Nix veri deposu optimize ediliyor (Aynı dosyalar linkleniyor)...$(C_RESET)"
+	@echo "$(C_YELLOW)--> Optimizing Nix store (Hard-linking identical files)...$(C_RESET)"
 	nix-store --optimise
-	@echo "$(C_SUCCESS)--> Temizlik tamamlandı!$(C_RESET)"
+	@echo "$(C_SUCCESS)--> Cleanup completed!$(C_RESET)"
 
 nix-update:
-	@echo "$(C_BLUE)--> Nix paket kanalları güncelleniyor...$(C_RESET)"
+	@echo "$(C_BLUE)--> Updating Nix package channels...$(C_RESET)"
 	nix-channel --update
 
 # ==============================================================================
-# 6. MULTIPASS VM SANALLAŞTIRMA KATMANI
+# 6. MULTIPASS VM VIRTUALIZATION LAYER
 # ==============================================================================
 setup-vm:
-	@echo "$(C_BLUE)--> Geliştirme sanal makinesi ($(VM_NAME)) [Hedef PHP: $(PHP_VER)] sürümüyle oluşturuluyor...$(C_RESET)"
+	@echo "$(C_BLUE)--> Creating VM: $(VM_NAME) [$(VM_CPUS) CPUs, $(VM_MEM) RAM, $(VM_DISK) Disk]$(C_RESET)"
+	@echo "$(C_BLUE)--> Runtimes: PHP: $(PHP_VER), Node: $(NODE_VER)$(C_RESET)"
+	@echo "$(C_BLUE)--> Databases: $(DATABASES)$(C_RESET)"
 	multipass launch --name $(VM_NAME) --cloud-init $(CLOUD_INIT) --cpus $(VM_CPUS) --mem $(VM_MEM) --disk $(VM_DISK) --param php_version="$(PHP_VER)" --param node_version="$(NODE_VER)" --param enabled_databases="$(DATABASES)"
-	@echo "$(C_BLUE)--> Ortak klasör otomatik bağlanıyor...$(C_RESET)"
+	@echo "$(C_BLUE)--> Automatically mounting shared folder...$(C_RESET)"
 	$(MAKE) vm-mount
-	@echo "$(C_SUCCESS)--> İşlem Başarılı! 'make vm-shell' ile kodlamaya başlayabilirsiniz.$(C_RESET)"
+	@echo "$(C_SUCCESS)--> Setup Successful! Start coding with 'make vm-shell'.$(C_RESET)"
 
 vm-shell:
 	multipass shell $(VM_NAME)
@@ -173,31 +172,31 @@ vm-info:
 	multipass info $(VM_NAME)
 
 vm-mount:
-	@echo "$(C_BLUE)--> Mevcut dizin VM içindeki '$(VM_REMOTE_DIR)' konumuna eşleniyor...$(C_RESET)"
+	@echo "$(C_BLUE)--> Mapping '$(VM_LOCAL_DIR)' to VM's '$(VM_REMOTE_DIR)'...$(C_RESET)"
 	multipass mount $(VM_LOCAL_DIR) $(VM_NAME):$(VM_REMOTE_DIR)
 
 vm-unmount:
-	@echo "$(C_YELLOW)--> Klasör bağlantısı kesiliyor...$(C_RESET)"
+	@echo "$(C_YELLOW)--> Disconnecting folder mount from $(VM_NAME)...$(C_RESET)"
 	multipass umount $(VM_NAME)
 
 vm-purge:
-	@echo "$(C_RED)--> VM kapatılıyor ve disk imajı tamamen siliniyor...$(C_RESET)"
+	@echo "$(C_RED)--> Shutting down VM and permanently deleting disk image...$(C_RESET)"
 	-multipass stop $(VM_NAME)
 	-multipass delete $(VM_NAME)
 	multipass purge
-	@echo "$(C_SUCCESS)--> VM arkasında iz bırakmadan temizlendi.$(C_RESET)"
+	@echo "$(C_SUCCESS)--> VM cleared without a trace.$(C_RESET)"
 
 # ==============================================================================
-# 7. DAĞITIM VE PAKETLEME (DEPLOYMENT & PACKAGING)
+# 7. DEPLOYMENT & PACKAGING
 # ==============================================================================
 create-deployment:
-	@echo "$(C_BLUE)--> Dağıtım paketi hazırlanıyor ($(DEPLOYMENT_FILE))...$(C_RESET)"
+	@echo "$(C_BLUE)--> Preparing deployment package ($(DEPLOYMENT_FILE))...$(C_RESET)"
 	@rm -f $(DEPLOYMENT_FILE)
 	@if [ ! -f .deployignore ]; then \
-		echo "$(C_YELLOW)⚠️  .deployignore dosyası bulunamadı! Tüm proje dosyaları sıkıştırılıyor...$(C_RESET)"; \
+		echo "$(C_YELLOW)⚠️  .deployignore file not found! Compressing all project files...$(C_RESET)"; \
 		zip -r $(DEPLOYMENT_FILE) . ; \
 	else \
-		echo "$(C_GREEN)✔️  .deployignore aktif. İstenmeyen dosyalar eleniyor...$(C_RESET)"; \
+		echo "$(C_GREEN)✔️  .deployignore is active. Filtering out unwanted files...$(C_RESET)"; \
 		zip -r $(DEPLOYMENT_FILE) . -x@.deployignore ; \
 	fi
-	@echo "$(C_SUCCESS)--> Dağıtım paketi başarıyla oluşturuldu: $(DEPLOYMENT_FILE) $(C_RESET)"
+	@echo "$(C_SUCCESS)--> Deployment package successfully created: $(DEPLOYMENT_FILE) $(C_RESET)"

@@ -67,57 +67,57 @@ pkgs.mkShell {
 
   shellHook = ''
     echo "=========================================================================="
-    echo " 🚀 BİRLEŞİK İZOLE GELİŞTİRME TERMİNALİ AKTİF"
+    echo " 🚀 UNIFIED ISOLATED DEVELOPMENT TERMINAL ACTIVE"
     echo "=========================================================================="
-    echo " 📌 AKTİF YAZILIM DİLLERİ VE ARAÇLAR:"
+    echo " 📌 ACTIVE PROGRAMMING LANGUAGES AND TOOLS:"
 
     if [ "${if hasPhp then "true" else "false"}" = "true" ]; then
     echo "  • PHP Ecosystem : ${phpVersion} (+ Selected Extensions & Composer)"
     echo "  - PHP:      $(${customPhp}/bin/php -r 'echo PHP_VERSION;')"
     if command -v composer >/dev/null 2>&1; then
-        echo "    - Composer: \$(composer --version | awk '{print \$3}')"
+        echo "    - Composer: $(composer --version | awk '{print $3}')"
       fi
     else
-      echo "  • PHP Ecosystem : [KAPALI / YÜKLÜ DEĞİL]"
+      echo "  • PHP Ecosystem : [DISABLED / NOT INSTALLED]"
     fi
 
     if [ "${if hasNode then "true" else "false"}" = "true" ]; then
       echo "  • Node Engine   : ${nodeVersion}"
-      echo "    - Node.js:  \$(node --version | sed 's/v//')"
+      echo "    - Node.js:  $(node --version | sed 's/v//')"
     else
-      echo "  • Node Engine   : [KAPALI / YÜKLÜ DEĞİL]"
+      echo "  • Node Engine   : [DISABLED / NOT INSTALLED]"
     fi
 
     if command -v python3 >/dev/null 2>&1; then
-      echo "  - Python:   \$(python3 --version | awk '{print \$2}')"
+      echo "  - Python:   $(python3 --version | awk '{print $2}')"
     else
-      echo "  - Python:   [KAPALI / YÜKLÜ DEĞİL]"
+      echo "  - Python:   [DISABLED / NOT INSTALLED]"
     fi
 
     if command -v go >/dev/null 2>&1; then
-      echo "  - Go:       \$(go version | awk '{print \$3}' | sed 's/go//')"
+      echo "  - Go:       $(go version | awk '{print $3}' | sed 's/go//')"
     else
-      echo "  - Go:       [KAPALI / YÜKLÜ DEĞİL]"
+      echo "  - Go:       [DISABLED / NOT INSTALLED]"
     fi
 
-    echo "  - Git:      \$(git --version | awk '{print \$3}')"
+    echo "  - Git:      $(git --version | awk '{print $3}')"
     echo "--------------------------------================================----------"
-    echo " 📌 SERVİS DURUMLARI (Makefile Üzerinden Yönetilir):"
-    echo "  • SQLite     : [${if withSqlite then "AKTIF" else "KAPALI"}]"
+    echo " 📌 SERVICE STATUSES (Managed via Makefile):"
+    echo "  • SQLite     : [${if withSqlite then "ACTIVE" else "DISABLED"}]"
 
-    # REDIS KONTROLÜ VE DURUM DETAYI
+    # REDIS CHECK AND STATUS DETAIL
     if [ "${if withRedis then "true" else "false"}" = "true" ]; then
       if command -v redis-cli >/dev/null 2>&1 && redis-cli ping >/dev/null 2>&1; then
-        echo "  • Redis      : [AKTIF - ÇALIŞIYOR]"
+        echo "  • Redis      : [ACTIVE - RUNNING]"
       else
-        echo "  • Redis      : [AKTIF - DURDURULDU] -> Başlat: 'redis-server --port 6379 &'"
+        echo "  • Redis      : [ACTIVE - STOPPED] -> Start: 'redis-server --port 6379 &'"
       fi
     else
-      echo "  • Redis      : [KAPALI / YÜKLÜ DEĞİL]"
+      echo "  • Redis      : [DISABLED / NOT INSTALLED]"
     fi
 
-    echo "  • Postgres   : [${if withPostgres then "AKTIF" else "KAPALI"}] -> Başlat: 'initdb -D .db_data_test'"
-    echo "  • MariaDB    : [${if withMariaDB then "AKTIF" else "KAPALI"}]"
+    echo "  • Postgres   : [${if withPostgres then "ACTIVE" else "DISABLED"}] -> Start: 'initdb -D .db_data_test'"
+    echo "  • MariaDB    : [${if withMariaDB then "ACTIVE" else "DISABLED"}]"
     echo "=========================================================================="
     
     export PS1="\n\[\033[1;36m\](nix-shell:${phpVersion})\[\033[0m\] \[\033[1;32m\]\w\[\033[0m\] \$ "
