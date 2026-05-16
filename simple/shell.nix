@@ -1,10 +1,12 @@
 { pkgs ? import <nixpkgs> {} }:
 
 let
-  # 1. Define your PHP version here (e.g., php81, php82, php83)
+  # 1. Define your package versions here
   phpPackage = pkgs.php83;
+  pythonPackage = pkgs.python311;
+  nodejsPackage = pkgs.nodejs-18_x;
 
-  # 2. Define the extensions you need
+  # 2. Define the extensions you need for PHP
   phpWithExtensions = phpPackage.withExtensions ({ all, enabled }: with all; [
     bcmath
     curl
@@ -21,19 +23,19 @@ pkgs.mkShell {
   buildInputs = [
     pkgs.git
     pkgs.htop
-    pkgs.python311
-    pkgs.nodejs-18_x
     pkgs.curl
     pkgs.vim
 
-    # Add the configured PHP package and Composer
+    # Configured packages
+    pythonPackage
+    nodejsPackage
     phpWithExtensions
     pkgs.phpPackages.composer
   ];
 
-shellHook = ''
-    echo "--- NIX-SHELL ORTAMI AKTIF ---"
-    echo "Yüklü Paketler:"
+  shellHook = ''
+    echo "--- NIX-SHELL ENVIRONMENT ACTIVE ---"
+    echo "Installed Packages:"
     echo "  - PHP:      $(${phpWithExtensions}/bin/php -r 'echo PHP_VERSION;')"
     echo "  - Composer: $(composer --version | awk '{print $3}')"
     echo "  - Node.js:  $(node --version | sed 's/v//')"

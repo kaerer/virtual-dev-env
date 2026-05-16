@@ -1,5 +1,5 @@
 #cloud-config
-# Multipass VM ilk açılışta yapılacaklar (Cloud-init)
+# Multipass VM initial setup tasks (Cloud-init)
 users:
   - default
   - name: developer
@@ -16,8 +16,8 @@ packages:
   - python3-pip
 
 runcmd:
-  - echo "Geliştirme dizinleri oluşturuluyor..."
+  - echo "Creating development directories..."
   - mkdir -p /home/ubuntu/project-workspace
   - chown -R ubuntu:ubuntu /home/ubuntu/project-workspace
 
-final_message: "Sanal makine kurulumu tamamlandı. SSH bağlantısı için hazır."
+final_message: "Virtual machine setup completed. Ready for SSH connection."
