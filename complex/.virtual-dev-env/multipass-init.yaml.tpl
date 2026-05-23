@@ -1,5 +1,9 @@
 #cloud-config
-# Multipass Virtual Machine Automatic Startup Configuration (Cloud-Init)
+# Multipass VM Cloud-Init TEMPLATE
+# Template variables (processed by Makefile's setup-vm):
+#   %%php_version%%         → PHP version (e.g., php82, php83)
+#   %%node_version%%        → Node version (e.g., nodejs_18, nodejs_20)
+#   %%enabled_databases%%   → Space-separated DB list (e.g., redis postgres)
 users:
     - default
     - name: developer

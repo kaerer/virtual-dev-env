@@ -49,7 +49,7 @@ let
   languages =
     (if hasPhp then [ customPhp phpExtensionPack.composer ] else []) ++
     (if hasNode then [ pkgs."${nodeVersion}" pkgs.yarn ] else []) ++ [
-    pkgs.go_1_21
+    pkgs.go
     pkgs.python311
     pkgs.python311Packages.pip
     pkgs.python311Packages.virtualenv
