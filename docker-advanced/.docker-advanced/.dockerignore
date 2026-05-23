@@ -1,0 +1,11 @@
+.git
+.gitignore
+node_modules
+vendor
+.go
+.composer
+.npm
+*.zip
+*.tar.gz
+.env
+.env.local

@@ -1,37 +1,39 @@
-# 🚀 Virtual Development Environments / Sanal Geliştirme Ortamları
+# 🚀 Virtual Development Environments
 
-🇺🇸 **EN:** This repository contains standardized, internationalized, and modular virtual development environment configurations using **Multipass**, **Nix**, and **Docker/K3s**. It is designed to provide a consistent coding environment across different tech stacks.
+This repository contains standardized, modular virtual development environment configurations using **Multipass**, **Nix**, and **Docker/K3s**. It is designed to provide a consistent coding environment across different tech stacks.
 
-🇹🇷 **TR:** Bu depo; **Multipass**, **Nix** ve **Docker/K3s** kullanarak standartlaştırılmış, uluslararasılaştırılmış ve modüler sanal geliştirme ortamı konfigürasyonlarını içerir. Farklı teknoloji yığınları arasında tutarlı bir kodlama ortamı sağlamak için tasarlanmıştır.
+Each subfolder is a **standalone template** — copy it into your project and customize.
 
 ---
 
-## 📂 Project Structure / Proje Yapısı
+## 📂 Project Structure
 
 ### 1. Simple Environment (`/simple`)
-- **🇺🇸 EN:** Managed through manual config editing. Best for fixed, long-term environments.
-- **🇹🇷 TR:** Manuel konfigürasyon düzenlemesiyle yönetilir. Sabit ve uzun vadeli ortamlar için en iyisidir.
+Managed through manual config editing. Best for fixed, long-term environments.
 - **Tools:** PHP, Node.js, Python, Git (Managed via `.virtual-dev-env/shell.nix`).
 
 ### 2. Complex Environment (`/complex`)
-- **🇺🇸 EN:** Advanced orchestrator using CLI overrides. Change anything on-the-fly.
-- **🇹🇷 TR:** CLI parametreleri ile yönetilen gelişmiş orkestratör. Her şeyi anlık olarak değiştirin.
+Advanced orchestrator using CLI overrides. Change anything on-the-fly.
 - **Tools:** Dynamic PHP/Node versions, optional Databases (Redis, Postgres, MariaDB, SQLite).
 
 ### 3. Docker Environment (`/docker`)
-- **🇺🇸 EN:** Container-based workflow with Docker Compose and local Kubernetes (K3s).
-- **🇹🇷 TR:** Docker Compose ve yerel Kubernetes (K3s) destekli konteyner tabanlı çalışma akışı.
+Container-based workflow with Docker Compose and local Kubernetes (K3s).
 - **Tools:** Modular runtimes, DB Profiles, and K3s cluster management via `k3d`.
+
+### 4. Docker Advanced Environment (`/docker-advanced`) 🆕
+Modern, Docker-based polyglot development environment. Go + PHP + Node + Python in one container, plus optional databases (PostgreSQL, Redis) and email testing (Mailpit).
+- **Tools:** Go, PHP 8.3, Node 20, Composer, Air (hot-reload), Xdebug, PostgreSQL 16, Redis 7, Mailpit
+- **Architecture:** Container-First with Docker Compose profiles
 
 ---
 
-## 🚀 Quick Start / Hızlı Başlangıç
+## 🚀 Quick Start
 
-### Prerequisites / Önkoşullar
+### Prerequisites
 - **Multipass / Nix:** For VM and lightweight shells.
 - **Docker / k3d:** For containerized and K8s environments.
 
-### Usage / Kullanım
+### Usage
 
 #### Simple Setup:
 ```bash
@@ -55,22 +57,35 @@ make up DATABASES="redis mariadb"    # Start with specific DBs
 make k3s-up                          # Spin up local K3s cluster
 ```
 
+#### Docker Advanced Setup (Recommended) 🆕:
+```bash
+cd docker-advanced
+make up                              # Start workspace container
+make up DATABASES="postgres redis"   # Start with databases
+make shell                           # Enter the environment
+```
+
 ---
 
-## 🛠 Features / Özellikler
+## 🛠 Features
 
-| Feature / Özellik | Simple | Complex | Docker/K3s |
-| :--- | :---: | :---: | :---: |
-| **Nix Shell / VM** | ✅ | ✅ | ❌ (Docker) |
-| **Variable Overrides** | ❌ (Manual) | ✅ (CLI) | ✅ (CLI) |
-| **Database Profiles** | ❌ | ✅ | ✅ |
-| **Kubernetes (K3s)** | ❌ | ❌ | ✅ |
-| **Color UI / Help** | ✅ | ✅ | ✅ |
-| **Architecture** | Config-First | Orchestrator-First | Container-First |
+| Feature | Simple | Complex | Docker/K3s | Docker Advanced 🆕 |
+| :--- | :---: | :---: | :---: | :---: |
+| **Runtime** | Nix Shell / VM | Nix Shell / VM | Docker Compose | Docker Compose |
+| **Variable Overrides** | ❌ Manual edit | ✅ CLI + .env | ✅ CLI + .env | ✅ CLI + .env |
+| **Standalone** | ✅ Full folder | ✅ Full folder | ✅ Full folder | ✅ Full folder |
+| **.env support** | ✅ | ✅ | ✅ | ✅ |
+| **make setup** | ✅ | ✅ | ✅ | ✅ |
+| **make test/lint** | ❌ | ❌ | ❌ | ✅ |
+| **Database Profiles** | ❌ | ✅ | ✅ | ✅ |
+| **Kubernetes (K3s)** | ❌ | ❌ | ✅ | ❌ |
+| **Go included** | ❌ | ✅ (partial) | ❌ | ✅ |
+| **Architecture** | Config-First | Orchestrator-First | Container-First | Docker-Advanced-First |
 
 ---
 
 ## 📝 TODO / Roadmap
+
 - [x] **Docker Integration:** Container-based modular setup.
 - [x] **Kubernetes/K3s:** Local K8s development via k3d.
 - [ ] **Custom Cloud-Init Templates:** More specialized OS images (Debian, Arch).
@@ -80,5 +95,4 @@ make k3s-up                          # Spin up local K3s cluster
 ---
 
 > [!TIP]
-> Use `make help` inside each folder to see the most up-to-date commands and your current configuration defaults.  
-> Her klasör içinde `make help` komutunu kullanarak en güncel komutları ve aktif yapılandırma varsayılanlarınızı görebilirsiniz.
+> Use `make help` inside each folder to see the most up-to-date commands and your current configuration defaults.

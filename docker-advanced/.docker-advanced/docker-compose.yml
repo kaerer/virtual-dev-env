@@ -1,0 +1,151 @@
+# ==============================================================================
+# WORKSPACE DOCKER COMPOSE
+# ==============================================================================
+# Profiles control which services start.
+# Usage: docker compose --profile postgres --profile redis up -d
+# Or via Makefile: make up DATABASES="postgres redis"
+# ==============================================================================
+
+services:
+
+  # ── Main Workspace Container ──────────────────────────────────────────────
+  workspace:
+    build:
+      context: ..
+      dockerfile: .docker-advanced/Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION:-1.24}
+        PHP_VERSION: ${PHP_VERSION:-8.3}
+        NODE_VERSION: ${NODE_VERSION:-20}
+    container_name: ${CONTAINER_NAME:-workspace}
+    hostname: ${CONTAINER_NAME:-workspace}
+    init: true
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/workspace:cached
+      - workspace-go:/workspace/.go
+    environment:
+      # Generic DB (defaults to postgres values)
+      DB_DRIVER: ${DB_DRIVER:-postgres}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-devdb}
+      DB_USER: ${DB_USER:-devuser}
+      DB_PASSWORD: ${DB_PASSWORD:-devpass}
+      # PostgreSQL
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${DB_NAME:-devdb}
+      POSTGRES_USER: ${DB_USER:-devuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
+      # MySQL / MariaDB
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${DB_NAME:-devdb}
+      MYSQL_USER: ${DB_USER:-devuser}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-devpass}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      # Mailpit
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      # Tool caches
+      COMPOSER_HOME: /workspace/.composer
+      npm_config_cache: /workspace/.npm
+      GOPATH: /workspace/.go
+      GOBIN: /workspace/.go/bin
+    networks:
+      - workspace-net
+    healthcheck:
+      test: ["CMD-SHELL", "command -v php || command -v node || command -v go || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── MariaDB / MySQL ──────────────────────────────────────────────────────
+  mysql:
+    image: mariadb:11.4
+    profiles: ["mariadb", "mysql"]
+    container_name: ${CONTAINER_NAME:-workspace}-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-devdb}
+      MYSQL_USER: ${DB_USER:-devuser}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-devpass}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - workspace-mysql:/var/lib/mysql
+    networks:
+      - workspace-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    container_name: ${CONTAINER_NAME:-workspace}-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-devdb}
+      POSTGRES_USER: ${DB_USER:-devuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - workspace-postgres:/var/lib/postgresql/data
+    networks:
+      - workspace-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-devuser} -d ${DB_NAME:-devdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    container_name: ${CONTAINER_NAME:-workspace}-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - workspace-redis:/data
+    networks:
+      - workspace-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Mailpit (Email Testing) ──────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:latest
+    profiles: ["mailpit"]
+    container_name: ${CONTAINER_NAME:-workspace}-mailpit
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - workspace-net
+    restart: unless-stopped
+
+volumes:
+  workspace-go:
+  workspace-mysql:
+  workspace-postgres:
+  workspace-redis:
+
+networks:
+  workspace-net:
+    name: ${CONTAINER_NAME:-workspace}-net
